@@ -1,0 +1,9 @@
+entity.taxonomy_vocabulary.menu_edit:
+  path: '/admin/structure/taxonomy/manage/{taxonomy_vocabulary}/menu_edit'
+  defaults:
+    _form: '\Drupal\taxonomy_menu_ui\Form\VocabularyMenuEdit'
+    _title: 'Edit menu items'
+  options:
+    _admin_route: TRUE
+  requirements:
+    _permission: 'administer taxonomy'

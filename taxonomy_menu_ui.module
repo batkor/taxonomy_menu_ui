@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * @file
+ * Primary module hooks for taxonomy_menu_ui module.
+ *
+ * @DCG
+ * This file is no longer required in Drupal 8.
+ * @see https://www.drupal.org/node/2217931
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\taxonomy_menu_ui\TaxonomyMenuUIHelper;
+
+/**
+ * Implements hook_entity_operation_alter().
+ */
+function taxonomy_menu_ui_entity_operation_alter(array &$operations, \Drupal\Core\Entity\EntityInterface $entity) {
+  if ($entity instanceof Vocabulary) {
+    $operations['taxonomy_menu_ui'] = [
+      'title' => t('Menu edit'),
+      'weight' => 50,
+      'url' => \Drupal\Core\Url::fromRoute('entity.taxonomy_vocabulary.menu_edit', ['taxonomy_vocabulary' => $entity->id()]),
+    ];
+  }
+}
+
+/**
+ * Implements hook_entity_extra_field_info().
+ */
+function taxonomy_menu_ui_entity_extra_field_info() {
+  $extra = [];
+  /** @var Vocabulary $bundle */
+  foreach (Vocabulary::loadMultiple() as $bundle) {
+    $extra['taxonomy_term'][$bundle->id()]['form']['menu'] = [
+      'label' => t('Menu settings'),
+      'description' => t('Field for menu settings'),
+      'weight' => 100,
+    ];
+  }
+
+  return $extra;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function taxonomy_menu_ui_form_taxonomy_term_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  TaxonomyMenuUIHelper::TaxonomyTermElements($form, $form_state);
+}

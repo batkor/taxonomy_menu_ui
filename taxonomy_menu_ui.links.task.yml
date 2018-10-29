@@ -1,0 +1,5 @@
+taxonomy_menu_ui.vocabulary_menu_edit_tab:
+  title: 'Menu'
+  route_name: entity.taxonomy_vocabulary.menu_edit
+  base_route: entity.taxonomy_vocabulary.overview_form
+  weight: 200
