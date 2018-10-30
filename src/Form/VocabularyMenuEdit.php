@@ -123,18 +123,17 @@ class VocabularyMenuEdit extends ConfigFormBase {
       'title' => $form_state->getValue('title'),
       'description' => $form_state->getValue('description'),
     ];
+    $vid = $form_state->get('taxonomy_vocabulary');
     $this->config('taxonomy_menu_ui.settings')
-      ->set('menu_list', [
-        $form_state->get('taxonomy_vocabulary') => [
-          'menu_name' => $form_state->getValue('menu_name'),
-          'menu_parent' => $form_state->getValue('menu_parent'),
-          'link_default' => $link_default,
-        ],
+      ->set("menu_list.{$vid}", [
+        'menu_name' => $form_state->getValue('menu_name'),
+        'menu_parent' => $form_state->getValue('menu_parent'),
+        'link_default' => $link_default,
       ])
       ->save();
 
     if ($form_state->getValue('run_generate')) {
-      $this->autoGenetateMenu($form_state->get('taxonomy_vocabulary'), $link_default, $form_state->getValue('menu_parent'));
+      $this->autoGenetateMenu($vid, $link_default, $form_state->getValue('menu_parent'));
     }
 
     parent::submitForm($form, $form_state);
