@@ -90,7 +90,7 @@ class VocabularyMenuEdit extends ConfigFormBase {
     $form['actions']['remove_menu'] = [
       '#type' => 'submit',
       '#value' => t('Remove menu items'),
-      '#suffix' => '<i>' . t('Remove menu items created from term list current vocabulary.') .'</i>',
+      '#suffix' => '<i>' . t('Remove menu items created from term list current vocabulary.') . '</i>',
       '#weight' => 500,
       '#submit' => ['::removeMenuItems'],
     ];
@@ -98,9 +98,10 @@ class VocabularyMenuEdit extends ConfigFormBase {
     return parent::buildForm($form, $form_state);
   }
 
-  public function removeMenuItems(array &$form, FormStateInterface $form_state){
-    $mids = $this->config('taxonomy_menu_ui.settings')->get("menu_list.{$form_state->get('taxonomy_vocabulary')}.links");
-    if ($mids){
+  public function removeMenuItems(array &$form, FormStateInterface $form_state) {
+    $mids = $this->config('taxonomy_menu_ui.settings')
+      ->get("menu_list.{$form_state->get('taxonomy_vocabulary')}.links");
+    if ($mids) {
       /** @var MenuLinkContent $menu */
       foreach (MenuLinkContent::loadMultiple($mids) as $menu) {
         $menu->delete();
@@ -148,6 +149,8 @@ class VocabularyMenuEdit extends ConfigFormBase {
       ];
       $helper->createTaxonomyMenuLink($values, $term);
     }
+    $this->messenger()
+      ->addStatus($this->t('Created @count menu items', ['@count' => count($terms)]));
   }
 
 }

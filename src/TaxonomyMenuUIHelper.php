@@ -83,6 +83,11 @@ class TaxonomyMenuUIHelper {
     $defaults = $helper->getMenuLinkDefault();
     /** @var \Drupal\taxonomy\Entity\Term $term */
     $term = $helper->getCurrentTerm();
+
+    if (!$term){
+      return;
+    }
+
     $settings = $config->get('menu_list.' . $term->getVocabularyId());
     /** @var \Drupal\Core\Menu\MenuParentFormSelectorInterface $menu_parent_selector */
     $menu_parent_selector = \Drupal::service('menu.parent_form_selector');
@@ -213,19 +218,22 @@ class TaxonomyMenuUIHelper {
    *   An array that contains default values for the menu link form or false if not found.
    */
   public function getMenuLinkDefault() {
-    $menu_id = $this->getConfig()
-      ->get("menu_list.{$this->getCurrentTerm()->getVocabularyId()}.links.{$this->getCurrentTerm()->id()}");
-    if ($menu_id) {
-      $menu = MenuLinkContent::load($menu_id);
-      if ($menu) {
-        return [
-          'id' => $menu_id,
-          'title' => $menu->getTitle(),
-          'descrition' => $menu->getDescription(),
-          'weight' => $menu->getWeight(),
-        ];
+    if ($this->getCurrentTerm()){
+      $menu_id = $this->getConfig()
+        ->get("menu_list.{$this->getCurrentTerm()->getVocabularyId()}.links.{$this->getCurrentTerm()->id()}");
+      if ($menu_id) {
+        $menu = MenuLinkContent::load($menu_id);
+        if ($menu) {
+          return [
+            'id' => $menu_id,
+            'title' => $menu->getTitle(),
+            'descrition' => $menu->getDescription(),
+            'weight' => $menu->getWeight(),
+          ];
+        }
       }
     }
+
     return FALSE;
   }
 
