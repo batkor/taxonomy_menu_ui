@@ -5,6 +5,7 @@ namespace Drupal\taxonomy_menu_ui\Form;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\menu_link_content\Entity\MenuLinkContent;
 use Drupal\taxonomy_menu_ui\TaxonomyMenuUIHelper;
 
 /**
@@ -89,29 +90,64 @@ class VocabularyMenuEdit extends ConfigFormBase {
     $form['actions']['remove_menu'] = [
       '#type' => 'submit',
       '#value' => t('Remove menu items'),
-      '#description' => t('Remove menu items created from term list current vocabulary.'),
+      '#suffix' => '<i>' . t('Remove menu items created from term list current vocabulary.') .'</i>',
+      '#weight' => 500,
+      '#submit' => ['::removeMenuItems'],
     ];
 
     return parent::buildForm($form, $form_state);
+  }
+
+  public function removeMenuItems(array &$form, FormStateInterface $form_state){
+    $mids = $this->config('taxonomy_menu_ui.settings')->get("menu_list.{$form_state->get('taxonomy_vocabulary')}.links");
+    if ($mids){
+      /** @var MenuLinkContent $menu */
+      foreach (MenuLinkContent::loadMultiple($mids) as $menu) {
+        $menu->delete();
+      }
+    }
   }
 
   /**
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
+    $link_default = [
+      'title' => $form_state->getValue('title'),
+      'description' => $form_state->getValue('description'),
+    ];
     $this->config('taxonomy_menu_ui.settings')
       ->set('menu_list', [
         $form_state->get('taxonomy_vocabulary') => [
           'menu_name' => $form_state->getValue('menu_name'),
           'menu_parent' => $form_state->getValue('menu_parent'),
-          'link_default' => [
-            'title' => $form_state->getValue('title'),
-            'description' => $form_state->getValue('description'),
-          ],
+          'link_default' => $link_default,
         ],
       ])
       ->save();
+
+    if ($form_state->getValue('run_generate')) {
+      $this->autoGenetateMenu($form_state->get('taxonomy_vocabulary'), $link_default, $form_state->getValue('menu_parent'));
+    }
+
     parent::submitForm($form, $form_state);
+  }
+
+  public function autoGenetateMenu($vid, $link_default, $menu_parent) {
+    $helper = new TaxonomyMenuUIHelper();
+    $token = \Drupal::service('token');
+    $terms = \Drupal::service('entity_type.manager')
+      ->getStorage("taxonomy_term")
+      ->loadTree($vid, 0, NULL, TRUE);
+
+    foreach ($terms as $term) {
+      $values = [
+        'title' => $token->replace($link_default['title'], ['term' => $term]),
+        'description' => $token->replace($link_default['description'], ['term' => $term]),
+        'menu_parent' => $menu_parent,
+      ];
+      $helper->createTaxonomyMenuLink($values, $term);
+    }
   }
 
 }
