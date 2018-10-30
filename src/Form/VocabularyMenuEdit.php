@@ -104,7 +104,13 @@ class VocabularyMenuEdit extends ConfigFormBase {
     if ($mids) {
       /** @var MenuLinkContent $menu */
       foreach (MenuLinkContent::loadMultiple($mids) as $menu) {
+        $tid = array_search($menu->id(), $mids);
         $menu->delete();
+        if ($tid !== FALSE) {
+          $this->config('taxonomy_menu_ui.settings')
+            ->clear("menu_list.{$form_state->get('taxonomy_vocabulary')}.links.{$tid}")
+            ->save();
+        }
       }
     }
   }
