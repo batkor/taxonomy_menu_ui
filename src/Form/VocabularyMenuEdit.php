@@ -74,8 +74,8 @@ class VocabularyMenuEdit extends ConfigFormBase {
     ];
     $options_cacheability->applyTo($form['menu']['menu_parent']);
 
-    $linkSettings = isset($current_settings['link']) ? $current_settings['link'] : NULL;
-    TaxonomyMenuUIHelper::MenuItemSetiings($form, [
+    $linkSettings = isset($current_settings['link_default']) ? $current_settings['link_default'] : NULL;
+    TaxonomyMenuUIHelper::MenuItemSetings($form, [
       'title' => isset($linkSettings['title']) ? $linkSettings['title'] : NULL,
       'description' => isset($linkSettings['description']) ? $linkSettings['description'] : NULL,
     ]);
@@ -104,7 +104,7 @@ class VocabularyMenuEdit extends ConfigFormBase {
         $form_state->get('taxonomy_vocabulary') => [
           'menu_name' => $form_state->getValue('menu_name'),
           'menu_parent' => $form_state->getValue('menu_parent'),
-          'link' => [
+          'link_default' => [
             'title' => $form_state->getValue('title'),
             'description' => $form_state->getValue('description'),
           ],

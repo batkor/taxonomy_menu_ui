@@ -3,18 +3,44 @@
 namespace Drupal\taxonomy_menu_ui;
 
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\menu_link_content\Entity\MenuLinkContent;
 
 class TaxonomyMenuUIHelper {
 
-  public function getConfig(){
-    return \Drupal::config('taxonomy_menu_ui.settings');
+  /**
+   * Return config "taxonomy_menu_ui.settings" for edit(editable).
+   *
+   * @return \Drupal\Core\Config\Config|\Drupal\Core\Config\ImmutableConfig
+   *   A configuration object.
+   */
+  public function getConfig() {
+    return \Drupal::service('config.factory')
+      ->getEditable('taxonomy_menu_ui.settings');
   }
 
-  public function getCurrentTerm(){
-    return $route = \Drupal::routeMatch()->getParameter('taxonomy_term');
+  /**
+   * Return current term from route.
+   *
+   * @return mixed|null|\Drupal\taxonomy\Entity\Term
+   *   Current term
+   */
+  public function getCurrentTerm() {
+    return \Drupal::routeMatch()->getParameter('taxonomy_term');
   }
 
-  public static function MenuItemSetiings(&$form, $config = NULL) {
+  /**
+   * Add link elements in Form array.
+   *
+   * @param array $form
+   *   Form elements array.
+   * @param array|null $config
+   *   Data for default value.
+   *
+   * @see \Drupal\taxonomy_menu_ui\Form\VocabularyMenuEdit::buildForm()
+   * @see TaxonomyTermElements()
+   *
+   */
+  public static function MenuItemSetings(&$form, $config = NULL) {
 
     $form['menu']['token_tree'] = [
       '#theme' => 'token_tree_link',
@@ -42,13 +68,22 @@ class TaxonomyMenuUIHelper {
 
   }
 
-  public static function TaxonomyTermElements(&$form, FormStateInterface $form_state){
+  /**
+   * Add elements in taxonomy_term_form form.
+   *
+   * @param $form
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *
+   * @see taxonomy_menu_ui_form_taxonomy_term_form_alter()
+   */
+  public static function TaxonomyTermElements(&$form, FormStateInterface $form_state) {
 
     $helper = (new self());
     $config = $helper->getConfig();
+    $defaults = $helper->getMenuLinkDefault();
     /** @var \Drupal\taxonomy\Entity\Term $term */
     $term = $helper->getCurrentTerm();
-    $settings = $config->get('menu_list.'.$term->getVocabularyId());
+    $settings = $config->get('menu_list.' . $term->getVocabularyId());
     /** @var \Drupal\Core\Menu\MenuParentFormSelectorInterface $menu_parent_selector */
     $menu_parent_selector = \Drupal::service('menu.parent_form_selector');
     $parent_element = $menu_parent_selector->parentSelectElement($settings['menu_parent']);
@@ -61,7 +96,7 @@ class TaxonomyMenuUIHelper {
       '#type' => 'details',
       '#title' => t('Menu settings'),
       '#access' => \Drupal::currentUser()->hasPermission('administer menu'),
-      //'#open' => (bool) $defaults['id'],
+      '#open' => $defaults ? (bool) $defaults['id'] : FALSE,
       '#group' => 'advanced',
       '#attached' => [
         'library' => ['menu_ui/drupal.menu_ui'],
@@ -74,8 +109,9 @@ class TaxonomyMenuUIHelper {
     $form['menu']['enabled'] = [
       '#type' => 'checkbox',
       '#title' => t('Provide a menu link'),
-      //'#default_value' => (int) (bool) $defaults['id'],
+      '#default_value' => $defaults ? (int) (bool) $defaults['id'] : FALSE,
     ];
+
     $form['menu']['link'] = [
       '#type' => 'container',
       '#parents' => ['menu'],
@@ -86,7 +122,7 @@ class TaxonomyMenuUIHelper {
       ],
     ];
 
-    self::MenuItemSetiings($form);
+    self::MenuItemSetings($form, $defaults ?: NULL);
 
     $form['menu']['link']['menu_parent'] = $parent_element;
     $form['menu']['link']['menu_parent']['#title'] = t('Parent item');
@@ -95,13 +131,102 @@ class TaxonomyMenuUIHelper {
     $form['menu']['link']['weight'] = [
       '#type' => 'number',
       '#title' => t('Weight'),
-      //'#default_value' => $defaults['weight'],
+      '#default_value' => $defaults['weight'],
       '#description' => t('Menu links with lower weights are displayed before links with higher weights.'),
     ];
+
+    foreach (array_keys($form['actions']) as $action) {
+      if ($action != 'preview' && isset($form['actions'][$action]['#type']) && $form['actions'][$action]['#type'] === 'submit') {
+        $form['actions'][$action]['#submit'][] = [
+          $helper,
+          'taxonomyTermSubmit'
+        ];
+      }
+    }
+
+    $form['#validate'][] = [$helper, 'taxonomyTermSubmitValidate'];
+
   }
 
-  public static function VocabularyBuilder() {
-    dsm(__FUNCTION__);
+  public function taxonomyTermSubmitValidate($form, FormStateInterface $form_state){
+    $values = $form_state->getValue('menu');
+    if (empty($values['title'])){
+      $form_state->setErrorByName('menu][title', t('Link title cannot empty.'));
+    }
+  }
+
+  public function taxonomyTermSubmit($form, FormStateInterface $form_state) {
+    $values = $form_state->getValue('menu');
+    if ($values['enabled']) {
+      $this->createTaxonomyMenuLink($values);
+    }
+    else {
+      $this->deleteTaxonomyMenuLink();
+    }
+  }
+
+  public function createTaxonomyMenuLink($values, $term = FALSE) {
+    list($menu_name, $parent) = explode(':', $values['menu_parent'], 2);
+    $values['menu_name'] = $menu_name;
+    $values['parent'] = $parent;
+
+    $term = $term ?: $this->getCurrentTerm();
+
+    /** @var MenuLinkContent $entity */
+    $entity = MenuLinkContent::create([
+      'link' => [
+        'uri' => 'internal:/taxonomy/term/' . $term->id()
+      ],
+      'langcode' => $term->language()->getId(),
+      'enabled' => 1,
+    ]);
+    $entity->set('title', trim($values['title']))
+      ->set('description', trim($values['description']))
+      ->set('menu_name', $values['menu_name'])
+      ->set('parent', $values['parent'])
+      ->set('weight', isset($values['weight']) ? $values['weight'] : 0)
+      ->save();
+    $this->getConfig()
+      ->set("menu_list.{$term->getVocabularyId()}.links.{$term->id()}", $entity->id())
+      ->save();
+  }
+
+  public function deleteTaxonomyMenuLink($term = FALSE) {
+    $term = $term ?: $this->getCurrentTerm();
+    $menu_id = $this->getConfig()
+      ->get("menu_list.{$term->getVocabularyId()}.links.{$term->id()}");
+    if ($menu_id) {
+      $menu = MenuLinkContent::load($menu_id);
+      if ($menu) {
+        $menu->delete();
+      }
+      $this->getConfig()
+        ->clear("menu_list.{$term->getVocabularyId()}.links.{$term->id()}")
+        ->save();
+    }
+  }
+
+  /**
+   * Returns the definition for a menu link for the given term.
+   *
+   * @return array|false
+   *   An array that contains default values for the menu link form or false if not found.
+   */
+  public function getMenuLinkDefault() {
+    $menu_id = $this->getConfig()
+      ->get("menu_list.{$this->getCurrentTerm()->getVocabularyId()}.links.{$this->getCurrentTerm()->id()}");
+    if ($menu_id) {
+      $menu = MenuLinkContent::load($menu_id);
+      if ($menu) {
+        return [
+          'id' => $menu_id,
+          'title' => $menu->getTitle(),
+          'descrition' => $menu->getDescription(),
+          'weight' => $menu->getWeight(),
+        ];
+      }
+    }
+    return FALSE;
   }
 
 }
