@@ -3,15 +3,45 @@
 namespace Drupal\taxonomy_menu_ui\Form;
 
 use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Utility\Token;
 use Drupal\menu_link_content\Entity\MenuLinkContent;
 use Drupal\taxonomy_menu_ui\TaxonomyMenuUIHelper;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Configure taxonomy_menu_ui settings for this site.
  */
 class VocabularyMenuEdit extends ConfigFormBase {
+
+  /** @var int Count created menu */
+  protected $items = 0;
+
+  /** @var EntityTypeManager */
+  protected $entityTypeManager;
+
+  /** @var Token */
+  protected $token;
+
+  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManager $entityTypeManager, Token $token) {
+    parent::__construct($config_factory);
+    $this->entityTypeManager = $entityTypeManager;
+    $this->token = $token;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container) {
+    return new static(
+      $container->get('config.factory'),
+      $container->get('entity_type.manager'),
+      $container->get('token')
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -134,28 +164,30 @@ class VocabularyMenuEdit extends ConfigFormBase {
 
     if ($form_state->getValue('run_generate')) {
       $this->autoGenetateMenu($vid, $link_default, $form_state->getValue('menu_parent'));
+      $this->messenger()
+        ->addStatus($this->t('Created @count menu items', ['@count' => $this->items]));
     }
 
     parent::submitForm($form, $form_state);
   }
 
-  public function autoGenetateMenu($vid, $link_default, $menu_parent) {
+  public function autoGenetateMenu($vid, $link_default, $menu_parent, $parent_term = 0) {
     $helper = new TaxonomyMenuUIHelper();
-    $token = \Drupal::service('token');
     $terms = \Drupal::service('entity_type.manager')
       ->getStorage("taxonomy_term")
-      ->loadTree($vid, 0, NULL, TRUE);
-
+      ->loadTree($vid, $parent_term, 1, TRUE);
+    /** @var \Drupal\taxonomy\Entity\Term $term */
     foreach ($terms as $term) {
       $values = [
-        'title' => $token->replace($link_default['title'], ['term' => $term]),
-        'description' => $token->replace($link_default['description'], ['term' => $term]),
+        'title' => $this->token->replace($link_default['title'], ['term' => $term]),
+        'description' => $this->token->replace($link_default['description'], ['term' => $term]),
         'menu_parent' => $menu_parent,
       ];
       $helper->createTaxonomyMenuLink($values, $term);
+      $this->items++;
+      $menuData = $helper->getMenuLinkDefault($term);
+      $this->autoGenetateMenu($vid, $link_default, $menuData['link_uuid'],$term->id());
     }
-    $this->messenger()
-      ->addStatus($this->t('Created @count menu items', ['@count' => count($terms)]));
   }
 
 }

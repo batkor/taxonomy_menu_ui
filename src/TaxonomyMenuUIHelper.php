@@ -84,14 +84,14 @@ class TaxonomyMenuUIHelper {
     /** @var \Drupal\taxonomy\Entity\Term $term */
     $term = $helper->getCurrentTerm();
 
-    if (!$term){
+    if (!$term) {
       return;
     }
 
-    $settings = $config->get('menu_list.' . $term->getVocabularyId());
+    $parent_menu = isset($defaults['parent'])?$defaults['parent']: $config->get('menu_list.' . $term->getVocabularyId().'.menu_parent');
     /** @var \Drupal\Core\Menu\MenuParentFormSelectorInterface $menu_parent_selector */
     $menu_parent_selector = \Drupal::service('menu.parent_form_selector');
-    $parent_element = $menu_parent_selector->parentSelectElement($settings['menu_parent']);
+    $parent_element = $menu_parent_selector->parentSelectElement($parent_menu);
     // If no possible parent menu items were found, there is nothing to display.
     if (empty($parent_element)) {
       return;
@@ -153,9 +153,9 @@ class TaxonomyMenuUIHelper {
 
   }
 
-  public function taxonomyTermSubmitValidate($form, FormStateInterface $form_state){
+  public function taxonomyTermSubmitValidate($form, FormStateInterface $form_state) {
     $values = $form_state->getValue('menu');
-    if (empty($values['title'])){
+    if (empty($values['title'])) {
       $form_state->setErrorByName('menu][title', t('Link title cannot empty.'));
     }
   }
@@ -171,6 +171,7 @@ class TaxonomyMenuUIHelper {
   }
 
   public function createTaxonomyMenuLink($values, $term = FALSE) {
+
     list($menu_name, $parent) = explode(':', $values['menu_parent'], 2);
     $values['menu_name'] = $menu_name;
     $values['parent'] = $parent;
@@ -190,6 +191,7 @@ class TaxonomyMenuUIHelper {
       ->set('menu_name', $values['menu_name'])
       ->set('parent', $values['parent'])
       ->set('weight', isset($values['weight']) ? $values['weight'] : 0)
+      ->set('expanded', isset($values['expanded']) ? $values['expanded'] : 0)
       ->save();
     $this->getConfig()
       ->set("menu_list.{$term->getVocabularyId()}.links.{$term->id()}", $entity->id())
@@ -217,10 +219,11 @@ class TaxonomyMenuUIHelper {
    * @return array|false
    *   An array that contains default values for the menu link form or false if not found.
    */
-  public function getMenuLinkDefault() {
-    if ($this->getCurrentTerm()){
+  public function getMenuLinkDefault($term = FALSE) {
+    $term = $term ?: $this->getCurrentTerm();
+    if ($term) {
       $menu_id = $this->getConfig()
-        ->get("menu_list.{$this->getCurrentTerm()->getVocabularyId()}.links.{$this->getCurrentTerm()->id()}");
+        ->get("menu_list.{$term->getVocabularyId()}.links.{$term->id()}");
       if ($menu_id) {
         $menu = MenuLinkContent::load($menu_id);
         if ($menu) {
@@ -229,6 +232,8 @@ class TaxonomyMenuUIHelper {
             'title' => $menu->getTitle(),
             'descrition' => $menu->getDescription(),
             'weight' => $menu->getWeight(),
+            'link_uuid' => $menu->getMenuName() . ':menu_link_content:' . $menu->get('uuid')->value,
+            'parent' => $menu->getMenuName() .':'.$menu->getParentId(),
           ];
         }
       }
