@@ -89,6 +89,9 @@ class TaxonomyMenuUIHelper {
     }
 
     $parent_menu = isset($defaults['parent']) ? $defaults['parent'] : $config->get('menu_list.' . $term->getVocabularyId() . '.menu_parent');
+    if (empty($parent_menu)) {
+      return;
+    }
     /** @var \Drupal\Core\Menu\MenuParentFormSelectorInterface $menu_parent_selector */
     $menu_parent_selector = \Drupal::service('menu.parent_form_selector');
     $parent_element = $menu_parent_selector->parentSelectElement($parent_menu);

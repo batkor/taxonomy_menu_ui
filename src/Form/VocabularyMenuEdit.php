@@ -121,7 +121,7 @@ class VocabularyMenuEdit extends ConfigFormBase {
       '#type' => 'checkbox',
       '#title' => t('Individual settings'),
       '#description' => t('Edit individual settings for term.'),
-      '#default_value' => (bool) $current_settings['individ_settings'],
+      '#default_value' => isset($current_settings['individ_settings'])? (bool) $current_settings['individ_settings']: FALSE,
     ];
 
     $form['actions']['remove_menu'] = [
