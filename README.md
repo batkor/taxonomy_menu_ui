@@ -1,7 +1,4 @@
 ##Taxonomy Term UI
-####Vocabulary page edit
-![Screen](https://i.imgur.com/fgCOJSc.png)
-####Term page edit
-![Screen](https://i.imgur.com/K4uhC4y.png)
+![Imgur](https://i.imgur.com/UI52iex.gifv)
 
 Supported token, default values, auto generate menu links by vocabulary terms and remove.  
