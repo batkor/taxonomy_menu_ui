@@ -88,7 +88,7 @@ class TaxonomyMenuUIHelper {
       return;
     }
 
-    $parent_menu = isset($defaults['parent'])?$defaults['parent']: $config->get('menu_list.' . $term->getVocabularyId().'.menu_parent');
+    $parent_menu = isset($defaults['parent']) ? $defaults['parent'] : $config->get('menu_list.' . $term->getVocabularyId() . '.menu_parent');
     /** @var \Drupal\Core\Menu\MenuParentFormSelectorInterface $menu_parent_selector */
     $menu_parent_selector = \Drupal::service('menu.parent_form_selector');
     $parent_element = $menu_parent_selector->parentSelectElement($parent_menu);
@@ -109,6 +109,7 @@ class TaxonomyMenuUIHelper {
       '#tree' => TRUE,
       '#weight' => 10,
       '#attributes' => ['class' => ['menu-link-form']],
+      '#disabled' => !(bool) $config->get('menu_list.' . $term->getVocabularyId() . '.individ_settings'),
     ];
 
     $form['menu']['enabled'] = [
@@ -177,7 +178,7 @@ class TaxonomyMenuUIHelper {
     $values['parent'] = $parent;
 
     $term = $term ?: $this->getCurrentTerm();
-
+    $this->deleteTaxonomyMenuLink($term);
     /** @var MenuLinkContent $entity */
     $entity = MenuLinkContent::create([
       'link' => [
@@ -233,7 +234,7 @@ class TaxonomyMenuUIHelper {
             'descrition' => $menu->getDescription(),
             'weight' => $menu->getWeight(),
             'link_uuid' => $menu->getMenuName() . ':menu_link_content:' . $menu->get('uuid')->value,
-            'parent' => $menu->getMenuName() .':'.$menu->getParentId(),
+            'parent' => $menu->getMenuName() . ':' . $menu->getParentId(),
           ];
         }
       }

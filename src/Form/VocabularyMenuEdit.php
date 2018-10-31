@@ -117,6 +117,13 @@ class VocabularyMenuEdit extends ConfigFormBase {
       '#description' => t('Generate menu items after save from term list current vocabulary.'),
     ];
 
+    $form['individ_settings'] = [
+      '#type' => 'checkbox',
+      '#title' => t('Individual settings'),
+      '#description' => t('Edit individual settings for term.'),
+      '#default_value' => (bool) $current_settings['individ_settings'],
+    ];
+
     $form['actions']['remove_menu'] = [
       '#type' => 'submit',
       '#value' => t('Remove menu items'),
@@ -155,11 +162,10 @@ class VocabularyMenuEdit extends ConfigFormBase {
     ];
     $vid = $form_state->get('taxonomy_vocabulary');
     $this->config('taxonomy_menu_ui.settings')
-      ->set("menu_list.{$vid}", [
-        'menu_name' => $form_state->getValue('menu_name'),
-        'menu_parent' => $form_state->getValue('menu_parent'),
-        'link_default' => $link_default,
-      ])
+      ->set("menu_list.{$vid}.menu_name", $form_state->getValue('menu_name'))
+      ->set("menu_list.{$vid}.menu_parent", $form_state->getValue('menu_parent'))
+      ->set("menu_list.{$vid}.individ_settings", $form_state->getValue('individ_settings'))
+      ->set("menu_list.{$vid}.link_default", $link_default)
       ->save();
 
     if ($form_state->getValue('run_generate')) {
