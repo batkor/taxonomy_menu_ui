@@ -1,4 +1,4 @@
 ##Taxonomy Term UI
-![Imgur](https://i.imgur.com/UI52iex.gifv)
+![Taxonomy Term UI](https://i.imgur.com/UI52iex.gif)
 
 Supported token, default values, auto generate menu links by vocabulary terms and remove.  
